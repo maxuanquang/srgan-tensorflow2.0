@@ -43,8 +43,8 @@ config.TRAIN.decay_every = int(config.TRAIN.n_epoch / 2)
 config.TRAIN.hr_img_path = '/content/drive/My Drive/srgan/srgan_tensorlayer/data/DIV2K_train_HR/'
 config.TRAIN.lr_img_path = '/content/drive/My Drive/srgan/srgan_tensorlayer/data/DIV2K_train_LR_bicubic_X4/DIV2K_train_LR_bicubic/X4/'
 
-config.VALID.hr_img_path = '/content/drive/My Drive/srgan/srgan_tensorlayer/data/DIV2K_valid_HR/'
-config.VALID.lr_img_path = '/content/drive/My Drive/srgan/srgan_tensorlayer/data/DIV2K_valid_LR_bicubic_X4/DIV2K_valid_LR_bicubic/X4/'
+# config.VALID.hr_img_path = '/content/drive/My Drive/srgan/srgan_tensorlayer/data/DIV2K_valid_HR/'
+# config.VALID.lr_img_path = '/content/drive/My Drive/srgan/srgan_tensorlayer/data/DIV2K_valid_LR_bicubic_X4/DIV2K_valid_LR_bicubic/X4/'
 
 def log_config(filename, cfg):
     with open(filename, 'w') as f:
