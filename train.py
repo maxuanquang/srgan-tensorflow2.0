@@ -125,7 +125,7 @@ def train():
                 g_gan_loss = tf.reduce_mean(g_gan_loss)
                 mse_loss = tf.keras.losses.mean_squared_error(fake_patchs, hr_patchs)
                 mse_loss = tf.reduce_mean(mse_loss)
-                vgg_loss = tf.multiply(tf.constant(2e-6),tf.keras.losses.mean_squared_error(feature_fake, feature_real))
+                vgg_loss = tf.multiply(tf.constant(6e-3),tf.keras.losses.mean_squared_error(feature_fake, feature_real))
                 vgg_loss = tf.reduce_mean(vgg_loss)
                 g_loss = mse_loss + vgg_loss + g_gan_loss
             grad = tape.gradient(g_loss, G.trainable_weights)
@@ -133,8 +133,8 @@ def train():
             grad = tape.gradient(g_loss, D.trainable_weights)
             d_optimizer.apply_gradients(zip(grad, D.trainable_weights))
             if (step == 0) or ((step+1) % verbose == 0):
-                print("Epoch: [{}/{}] step: [{}/{}] time: {:.3f}s, g_loss(mse:{:.3f}, vgg:{:.3f}, adv:{:.3f}) d_loss: {:.3f}".format(
-                        epoch+1, n_epoch, step+1, n_step_epoch, time.time() - step_time, mse_loss, vgg_loss, g_gan_loss, d_loss))
+                print("Epoch: [{}/{}] step: [{}/{}] time: {:.3f}s, g_loss(mse:{:.3f}, vgg:{:.3f}, adv:{:.3f}) d_loss: {:.3f} d_loss1: {:.3f} d_loss2: {:.3f}".format(
+                        epoch+1, n_epoch, step+1, n_step_epoch, time.time() - step_time, mse_loss, vgg_loss, g_gan_loss, d_loss, d_loss1, d_loss2))
 
         # update the learning rate
         if (epoch != 0) and ((epoch+1) % decay_every == 0):
