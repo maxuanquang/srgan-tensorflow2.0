@@ -28,6 +28,10 @@ config.TRAIN.g_trained_dir = os.path.join(config.CHECKPOINT_DIR, 'g.h5')
 config.TRAIN.d_trained_dir = os.path.join(config.CHECKPOINT_DIR, 'd.h5')
 config.TRAIN.g_warmed_up_dir = os.path.join(config.CHECKPOINT_DIR, 'g_warmed_up.h5')
 
+# loss files
+config.TRAIN.g_losses_txt = os.path.join(config.CHECKPOINT_DIR, 'g_losses.txt')
+config.TRAIN.d_losses_txt = os.path.join(config.CHECKPOINT_DIR, 'd_losses.txt')
+
 ## adversarial learning (SRGAN)
 config.TRAIN.n_epoch = 200
 config.TRAIN.lr_decay = 0.1

@@ -30,6 +30,9 @@ g_trained_dir = config.TRAIN.g_trained_dir
 d_trained_dir = config.TRAIN.d_trained_dir
 g_warmed_up_dir = config.TRAIN.g_warmed_up_dir
 
+g_losses_txt = config.TRAIN.g_losses_txt
+d_losses_txt = config.TRAIN.d_losses_txt
+
 ## adversarial learning (SRGAN)
 n_epoch = config.TRAIN.n_epoch
 lr_decay = config.TRAIN.lr_decay
@@ -96,7 +99,7 @@ def warmup():
         if (epoch!=0) and ((epoch+1)%n_epochs_save_model==0):
             G.save_weights(os.path.join(checkpoint_dir, 'g_warmed_up_{}.h5'.format(epoch+1)))
     G.save_weights(os.path.join(checkpoint_dir, 'g_warmed_up.h5'))
-    
+
 def train():
     G = get_G(input_G_shape)
     G.load_weights(g_warmed_up_dir)
@@ -125,6 +128,8 @@ def train():
 
     # adversarial learning (G,D)
     for epoch in range(n_epoch):
+        g_losses = []
+        d_losses = []
         for step, (lr_patchs, hr_patchs) in enumerate(train_ds):
             step_time = time.time()
             # To compute multiple gradients over the same computation, create a persistent gradient tape
@@ -154,7 +159,18 @@ def train():
             if (step == 0) or ((step+1) % verbose == 0):
                 print("Epoch: [{}/{}] step: [{}/{}] time: {:.3f}s, g_loss(mse:{:.3f}, vgg:{:.3f}, adv:{:.3f}) d_loss: {:.3f} d_loss1: {:.3f} d_loss2: {:.3f}".format(
                         epoch+1, n_epoch, step+1, n_step_epoch, time.time() - step_time, mse_loss, vgg_loss, g_gan_loss, d_loss, d_loss1, d_loss2))
+            g_losses.append(g_loss)
+            d_losses.append(d_loss)
 
+        # save losses to file
+        with open(g_losses_txt, 'a') as f:
+            for item in g_losses:
+                f.write("{}\n".format(item))
+                
+        with open(d_losses_txt, 'a') as f:
+            for item in d_losses:
+                f.write("{}\n".format(item))
+        
         # update the learning rate
         if (epoch != 0) and ((epoch+1) % decay_every == 0):
             new_lr_decay = lr_decay**((epoch+1) // decay_every)
@@ -166,7 +182,7 @@ def train():
             tl.vis.save_images(fake_patchs.numpy(), [2, 4], os.path.join(save_dir, 'train_g_{}.png'.format(epoch+1)))
             G.save_weights(os.path.join(checkpoint_dir, 'g_{}.h5'.format(epoch+1)))
             D.save_weights(os.path.join(checkpoint_dir, 'd_{}.h5'.format(epoch+1)))
-            
+
 def evaluate():
     ###====================== PRE-LOAD DATA ===========================###
     # train_hr_img_list = sorted(tl.files.load_file_list(path=config.TRAIN.hr_img_path, regx='.*.png', printable=False))
@@ -203,7 +219,7 @@ def evaluate():
 
     out_bicu = cv2.resize(valid_lr_img[0], (size[1] * 4, size[0] * 4))
     tl.vis.save_image(out_bicu, os.path.join(save_dir, 'valid_bicubic.png'))
-    
+
 def train_continue():
     G = get_G(input_G_shape)
     D = get_D(input_D_shape)
@@ -227,6 +243,8 @@ def train_continue():
     
     # adversarial learning (G,D)
     for epoch in range(n_epoch):
+        g_losses = []
+        d_losses = []
         for step, (lr_patchs, hr_patchs) in enumerate(train_ds):
             step_time = time.time()
             # To compute multiple gradients over the same computation, create a persistent gradient tape
@@ -256,7 +274,18 @@ def train_continue():
             if (step == 0) or ((step+1) % verbose == 0):
                 print("Epoch: [{}/{}] step: [{}/{}] time: {:.3f}s, g_loss(mse:{:.3f}, vgg:{:.3f}, adv:{:.3f}) d_loss: {:.3f} d_loss1: {:.3f} d_loss2: {:.3f}".format(
                         epoch+1, n_epoch, step+1, n_step_epoch, time.time() - step_time, mse_loss, vgg_loss, g_gan_loss, d_loss, d_loss1, d_loss2))
-
+            g_losses.append(g_loss)
+            d_losses.append(d_loss)
+        
+        # save losses to file
+        with open(g_losses_txt, 'a') as f:
+            for item in g_losses:
+                f.write("{}\n".format(item))
+                
+        with open(d_losses_txt, 'a') as f:
+            for item in d_losses:
+                f.write("{}\n".format(item))
+            
         # update the learning rate
         if (epoch != 0) and ((epoch+1) % decay_every == 0):
             new_lr_decay = lr_decay**((epoch+1) // decay_every)
