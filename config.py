@@ -14,6 +14,13 @@ config.TRAIN.number_of_images = 800
 config.TRAIN.adv_coef = 1e-3
 config.TRAIN.vgg_coef = 2e-6
 config.TRAIN.loss_type = 'MAEVGG' # Options: 'MAE', 'MSE', 'VGG', 'MAEVGG', 'MSEVGG'
+
+config.SAVE_DIR = os.path.join(config.BASE_PATH, 'samples')
+config.CHECKPOINT_DIR = os.path.join(config.BASE_PATH, 'models')
+config.TRAIN.g_trained_dir = os.path.join(config.CHECKPOINT_DIR, 'g.h5') 
+config.TRAIN.d_trained_dir = os.path.join(config.CHECKPOINT_DIR, 'd.h5')
+config.TRAIN.g_evaluate_dir = os.path.join(config.CHECKPOINT_DIR, 'g.h5')
+config.TRAIN.g_warmed_up_dir = os.path.join(config.CHECKPOINT_DIR, 'g_warmed_up.h5')
 ####################################
 
 config.TRAIN.input_G_shape = (96, 96, 3)
@@ -23,11 +30,6 @@ config.TRAIN.beta1 = 0.9
 config.TRAIN.n_epochs_save_model = 2
 config.TRAIN.shuffle_buffer_size = 128
 config.TRAIN.verbose = 10
-config.SAVE_DIR = os.path.join(config.BASE_PATH, 'samples')
-config.CHECKPOINT_DIR = os.path.join(config.BASE_PATH, 'models')
-config.TRAIN.g_trained_dir = os.path.join(config.CHECKPOINT_DIR, 'g.h5')
-config.TRAIN.d_trained_dir = os.path.join(config.CHECKPOINT_DIR, 'd.h5')
-config.TRAIN.g_warmed_up_dir = os.path.join(config.CHECKPOINT_DIR, 'g_warmed_up.h5')
 
 # loss files
 config.TRAIN.g_losses_txt = os.path.join(config.CHECKPOINT_DIR, 'g_losses.txt')

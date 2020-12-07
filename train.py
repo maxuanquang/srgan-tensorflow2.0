@@ -29,7 +29,7 @@ n_epochs_save_model = config.TRAIN.n_epochs_save_model
 g_trained_dir = config.TRAIN.g_trained_dir
 d_trained_dir = config.TRAIN.d_trained_dir
 g_warmed_up_dir = config.TRAIN.g_warmed_up_dir
-
+g_evaluate_dir = config.TRAIN.g_evaluate_dir
 g_losses_txt = config.TRAIN.g_losses_txt
 d_losses_txt = config.TRAIN.d_losses_txt
 
@@ -179,21 +179,21 @@ def train():
                     mae_loss = tf.reduce_mean(mae_loss)
                     g_loss = mae_loss + g_gan_loss
                     if (step == 0) or ((step+1) % verbose == 0):
-                        print("Epoch: [{}/{}] step: [{}/{}] time: {:.3f}s, g_loss:{:.3f} (mae:{:.3f}, adv:{:.3f}) d_loss: {:.3f} d_loss1: {:.3f} d_loss2: {:.3f}".format(
+                        print("Epoch: [{}/{}] step: [{}/{}] time: {:.3f}s, g_loss:{:.3f} (mae:{:.3f}, adv:{:.3f}) d_loss: {:.3f} (d_loss1: {:.3f} d_loss2: {:.3f})".format(
                                 epoch+1, n_epoch, step+1, n_step_epoch, time.time() - step_time, g_loss, mae_loss, g_gan_loss, d_loss, d_loss1, d_loss2))
                 elif loss_type=='VGG':
                     vgg_loss = tf.keras.losses.mean_absolute_error(feature_fake, feature_real)
                     vgg_loss = tf.reduce_mean(vgg_loss)
                     g_loss = vgg_loss + g_gan_loss
                     if (step == 0) or ((step+1) % verbose == 0):
-                        print("Epoch: [{}/{}] step: [{}/{}] time: {:.3f}s, g_loss:{:.3f} (vgg:{:.3f}, adv:{:.3f}) d_loss: {:.3f} d_loss1: {:.3f} d_loss2: {:.3f}".format(
+                        print("Epoch: [{}/{}] step: [{}/{}] time: {:.3f}s, g_loss:{:.3f} (vgg:{:.3f}, adv:{:.3f}) d_loss: {:.3f} (d_loss1: {:.3f} d_loss2: {:.3f})".format(
                                 epoch+1, n_epoch, step+1, n_step_epoch, time.time() - step_time, g_loss, vgg_loss, g_gan_loss, d_loss, d_loss1, d_loss2))
                 elif loss_type=='MSE':
                     mse_loss = tf.keras.losses.mean_squared_error(fake_patchs, hr_patchs)
                     mse_loss = tf.reduce_mean(mse_loss)
                     g_loss = mse_loss + g_gan_loss
                     if (step == 0) or ((step+1) % verbose == 0):
-                        print("Epoch: [{}/{}] step: [{}/{}] time: {:.3f}s, g_loss:{:.3f} (mse:{:.3f}, adv:{:.3f}) d_loss: {:.3f} d_loss1: {:.3f} d_loss2: {:.3f}".format(
+                        print("Epoch: [{}/{}] step: [{}/{}] time: {:.3f}s, g_loss:{:.3f} (mse:{:.3f}, adv:{:.3f}) d_loss: {:.3f} (d_loss1: {:.3f} d_loss2: {:.3f})".format(
                                 epoch+1, n_epoch, step+1, n_step_epoch, time.time() - step_time, g_loss, mse_loss, g_gan_loss, d_loss, d_loss1, d_loss2))
             grad = tape.gradient(g_loss, G.trainable_weights)
             g_optimizer.apply_gradients(zip(grad, G.trainable_weights))
@@ -244,7 +244,7 @@ def evaluate():
     valid_lr_img = (valid_lr_img / 127.5) - 1  # rescale to ［－1, 1]
 
     G = get_G([None, None, 3])
-    G.load_weights(os.path.join(checkpoint_dir, 'g.h5'))
+    G.load_weights(g_evaluate_dir)
 
     valid_lr_img = np.asarray(valid_lr_img, dtype=np.float32)
     valid_lr_img = valid_lr_img[np.newaxis,:,:,:]
@@ -295,26 +295,59 @@ def train_continue():
                 logits_real = D(hr_patchs)
                 feature_fake = VGG((fake_patchs+1)/2.) # the pre-trained VGG uses the input range of [0, 1] but we use input range of [-1 1]
                 feature_real = VGG((hr_patchs+1)/2.)
-
+                
                 d_loss1 = tf.keras.losses.binary_crossentropy(tf.ones_like(logits_real),logits_real, from_logits=True)
                 d_loss2 = tf.keras.losses.binary_crossentropy(tf.zeros_like(logits_fake),logits_fake,from_logits=True)
                 d_loss1 = tf.reduce_mean(d_loss1)
                 d_loss2 = tf.reduce_mean(d_loss2)
                 d_loss = d_loss1 + d_loss2
-                g_gan_loss = tf.multiply(tf.constant(1e-3),tf.keras.losses.binary_crossentropy(tf.ones_like(logits_fake),logits_fake,from_logits=True))
+                g_gan_loss = tf.multiply(tf.constant(adv_coef),tf.keras.losses.binary_crossentropy(tf.ones_like(logits_fake),logits_fake,from_logits=True))
                 g_gan_loss = tf.reduce_mean(g_gan_loss)
-                mse_loss = tf.keras.losses.mean_squared_error(fake_patchs, hr_patchs)
-                mse_loss = tf.reduce_mean(mse_loss)
-                vgg_loss = tf.multiply(tf.constant(2e-6),tf.keras.losses.mean_squared_error(feature_fake, feature_real))
-                vgg_loss = tf.reduce_mean(vgg_loss)
-                g_loss = mse_loss + vgg_loss + g_gan_loss
+                
+                if loss_type=='MSEVGG':
+                    mse_loss = tf.keras.losses.mean_squared_error(fake_patchs, hr_patchs)
+                    mse_loss = tf.reduce_mean(mse_loss)
+                    vgg_loss = tf.multiply(tf.constant(vgg_coef),tf.keras.losses.mean_squared_error(feature_fake, feature_real))
+                    vgg_loss = tf.reduce_mean(vgg_loss)
+                    g_loss = mse_loss + vgg_loss + g_gan_loss
+                    if (step == 0) or ((step+1) % verbose == 0):
+                        print("Epoch: [{}/{}] step: [{}/{}] time: {:.3f}s, g_loss:{:.3f} (mse:{:.3f}, vgg:{:.3f}, adv:{:.3f}) d_loss:{:.3f} (d_loss1:{:.3f} d_loss2:{:.3f})".format(
+                                epoch+1, n_epoch, step+1, n_step_epoch, time.time() - step_time, g_loss, mse_loss, vgg_loss, g_gan_loss, d_loss, d_loss1, d_loss2))
+                elif loss_type=='MAEVGG':
+                    mae_loss = tf.keras.losses.mean_absolute_error(fake_patchs, hr_patchs)
+                    mae_loss = tf.reduce_mean(mae_loss)
+                    vgg_loss = tf.multiply(tf.constant(vgg_coef),tf.keras.losses.mean_absolute_error(feature_fake, feature_real))
+                    vgg_loss = tf.reduce_mean(vgg_loss)
+                    g_loss = mae_loss + vgg_loss + g_gan_loss
+                    if (step == 0) or ((step+1) % verbose == 0):
+                        print("Epoch: [{}/{}] step: [{}/{}] time: {:.3f}s, g_loss:{:.3f} (mae:{:.3f}, vgg:{:.3f}, adv:{:.3f}) d_loss:{:.3f} (d_loss1:{:.3f} d_loss2:{:.3f})".format(
+                                epoch+1, n_epoch, step+1, n_step_epoch, time.time() - step_time, g_loss, mae_loss, vgg_loss, g_gan_loss, d_loss, d_loss1, d_loss2))
+                elif loss_type=='MAE':
+                    mae_loss = tf.keras.losses.mean_absolute_error(fake_patchs, hr_patchs)
+                    mae_loss = tf.reduce_mean(mae_loss)
+                    g_loss = mae_loss + g_gan_loss
+                    if (step == 0) or ((step+1) % verbose == 0):
+                        print("Epoch: [{}/{}] step: [{}/{}] time: {:.3f}s, g_loss:{:.3f} (mae:{:.3f}, adv:{:.3f}) d_loss: {:.3f} (d_loss1: {:.3f} d_loss2: {:.3f})".format(
+                                epoch+1, n_epoch, step+1, n_step_epoch, time.time() - step_time, g_loss, mae_loss, g_gan_loss, d_loss, d_loss1, d_loss2))
+                elif loss_type=='VGG':
+                    vgg_loss = tf.keras.losses.mean_absolute_error(feature_fake, feature_real)
+                    vgg_loss = tf.reduce_mean(vgg_loss)
+                    g_loss = vgg_loss + g_gan_loss
+                    if (step == 0) or ((step+1) % verbose == 0):
+                        print("Epoch: [{}/{}] step: [{}/{}] time: {:.3f}s, g_loss:{:.3f} (vgg:{:.3f}, adv:{:.3f}) d_loss: {:.3f} (d_loss1: {:.3f} d_loss2: {:.3f})".format(
+                                epoch+1, n_epoch, step+1, n_step_epoch, time.time() - step_time, g_loss, vgg_loss, g_gan_loss, d_loss, d_loss1, d_loss2))
+                elif loss_type=='MSE':
+                    mse_loss = tf.keras.losses.mean_squared_error(fake_patchs, hr_patchs)
+                    mse_loss = tf.reduce_mean(mse_loss)
+                    g_loss = mse_loss + g_gan_loss
+                    if (step == 0) or ((step+1) % verbose == 0):
+                        print("Epoch: [{}/{}] step: [{}/{}] time: {:.3f}s, g_loss:{:.3f} (mse:{:.3f}, adv:{:.3f}) d_loss: {:.3f} (d_loss1: {:.3f} d_loss2: {:.3f})".format(
+                                epoch+1, n_epoch, step+1, n_step_epoch, time.time() - step_time, g_loss, mse_loss, g_gan_loss, d_loss, d_loss1, d_loss2))
             grad = tape.gradient(g_loss, G.trainable_weights)
             g_optimizer.apply_gradients(zip(grad, G.trainable_weights))
             grad = tape.gradient(d_loss, D.trainable_weights)
             d_optimizer.apply_gradients(zip(grad, D.trainable_weights))
-            if (step == 0) or ((step+1) % verbose == 0):
-                print("Epoch: [{}/{}] step: [{}/{}] time: {:.3f}s, g_loss(mse:{:.3f}, vgg:{:.3f}, adv:{:.3f}) d_loss: {:.3f} d_loss1: {:.3f} d_loss2: {:.3f}".format(
-                        epoch+1, n_epoch, step+1, n_step_epoch, time.time() - step_time, mse_loss, vgg_loss, g_gan_loss, d_loss, d_loss1, d_loss2))
+
             g_losses.append(g_loss)
             d_losses.append(d_loss)
         
