@@ -88,7 +88,7 @@ def warmup():
             with tf.GradientTape() as tape:
                 fake_hr_patchs = G(lr_patchs)
                 mae_loss = tf.keras.losses.mean_absolute_error(fake_hr_patchs, hr_patchs)
-            grad = tape.gradient(mse_loss, G.trainable_weights)
+            grad = tape.gradient(mae_loss, G.trainable_weights)
             g_optimizer_init.apply_gradients(zip(grad,G.trainable_weights))
             if (step == 0) or ((step+1) % verbose == 0):
                 print("Epoch: [{}/{}] step: [{}/{}] time: {:.3f}s, mae: {:.3f} ".format(
