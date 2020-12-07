@@ -28,6 +28,7 @@ verbose = config.TRAIN.verbose
 n_epochs_save_model = config.TRAIN.n_epochs_save_model
 g_trained_dir = config.TRAIN.g_trained_dir
 d_trained_dir = config.TRAIN.d_trained_dir
+g_warmed_up_dir = config.TRAIN.g_warmed_up_dir
 
 ## adversarial learning (SRGAN)
 n_epoch = config.TRAIN.n_epoch
@@ -67,8 +68,38 @@ def get_train_data():
     train_ds = train_ds.prefetch(buffer_size=2) # prefetch truoc 2 batch
     return train_ds
 
+def warmup():
+    '''
+    Warm-up G (Generator) using Mean Absolute Error Loss
+    '''
+    G = get_G(input_G_shape)
+
+    lr_v = tf.Variable(lr_init)
+    g_optimizer_init=tf.optimizers.Adam(lr_v, beta_1=beta1)
+
+    train_ds = get_train_data()
+    total_images = len(tl.files.load_file_list(path=config.TRAIN.hr_img_path, regx='.*.png', printable=False)[:number_of_images])
+    n_step_epoch = math.ceil(total_images / batch_size)
+
+    # initialize learning
+    for epoch in range(n_epoch_init):
+        for step,(lr_patchs,hr_patchs) in enumerate(train_ds):
+            step_time = time.time()
+            with tf.GradientTape() as tape:
+                fake_hr_patchs = G(lr_patchs)
+                mae_loss = tf.keras.losses.mean_absolute_error(fake_hr_patchs, hr_patchs)
+            grad = tape.gradient(mse_loss, G.trainable_weights)
+            g_optimizer_init.apply_gradients(zip(grad,G.trainable_weights))
+            if (step == 0) or ((step+1) % verbose == 0):
+                print("Epoch: [{}/{}] step: [{}/{}] time: {:.3f}s, mae: {:.3f} ".format(
+                    epoch+1, n_epoch_init, step+1, n_step_epoch, time.time() - step_time, np.mean(mae_loss)))
+        if (epoch!=0) and ((epoch+1)%n_epochs_save_model==0):
+            G.save_weights(os.path.join(checkpoint_dir, 'g_warmed_up_{}.h5'.format(epoch+1)))
+    G.save_weights(os.path.join(checkpoint_dir, 'g_warmed_up.h5'))
+    
 def train():
     G = get_G(input_G_shape)
+    G.load_weights(g_warmed_up_dir)
     D = get_D(input_D_shape)
 
     VGG = tf.keras.applications.VGG16(
@@ -85,28 +116,12 @@ def train():
     VGG.save_weights(os.path.join(checkpoint_dir, 'VGG.h5'))
 
     lr_v = tf.Variable(lr_init)
-    g_optimizer_init=tf.optimizers.Adam(lr_v, beta_1=beta1)
     g_optimizer=tf.optimizers.Adam(lr_v, beta_1=beta1)
     d_optimizer=tf.optimizers.Adam(lr_v, beta_1=beta1)
 
     train_ds = get_train_data()
     total_images = len(tl.files.load_file_list(path=config.TRAIN.hr_img_path, regx='.*.png', printable=False)[:number_of_images])
-
-    # initialize learning
     n_step_epoch = math.ceil(total_images / batch_size)
-    for epoch in range(n_epoch_init):
-        for step,(lr_patchs,hr_patchs) in enumerate(train_ds):
-            step_time = time.time()
-            with tf.GradientTape() as tape:
-                fake_hr_patchs = G(lr_patchs)
-                mse_loss = tf.keras.losses.mean_squared_error(fake_hr_patchs, hr_patchs)
-            grad = tape.gradient(mse_loss, G.trainable_weights)
-            g_optimizer_init.apply_gradients(zip(grad,G.trainable_weights))
-            if (step == 0) or ((step+1) % verbose == 0):
-                print("Epoch: [{}/{}] step: [{}/{}] time: {:.3f}s, mse: {:.3f} ".format(
-                    epoch+1, n_epoch_init, step+1, n_step_epoch, time.time() - step_time, np.mean(mse_loss)))
-        if (epoch!=0) and (epoch%1==0):
-            tl.vis.save_images(fake_hr_patchs.numpy(), [2, 4], os.path.join(save_dir, 'train_g_init_{}.png'.format(epoch+1)))
 
     # adversarial learning (G,D)
     for epoch in range(n_epoch):
@@ -137,8 +152,8 @@ def train():
             grad = tape.gradient(d_loss, D.trainable_weights)
             d_optimizer.apply_gradients(zip(grad, D.trainable_weights))
             if (step == 0) or ((step+1) % verbose == 0):
-                print("Epoch: [{}/{}] step: [{}/{}] time: {:.3f}s, g_loss(mse:{:.3f}, vgg:{:.3f}, adv:{:.3f}) d_loss: {:.3f}".format(
-                        epoch+1, n_epoch, step+1, n_step_epoch, time.time() - step_time, mse_loss, vgg_loss, g_gan_loss, d_loss))
+                print("Epoch: [{}/{}] step: [{}/{}] time: {:.3f}s, g_loss(mse:{:.3f}, vgg:{:.3f}, adv:{:.3f}) d_loss: {:.3f} d_loss1: {:.3f} d_loss2: {:.3f}".format(
+                        epoch+1, n_epoch, step+1, n_step_epoch, time.time() - step_time, mse_loss, vgg_loss, g_gan_loss, d_loss, d_loss1, d_loss2))
 
         # update the learning rate
         if (epoch != 0) and ((epoch+1) % decay_every == 0):
@@ -151,7 +166,7 @@ def train():
             tl.vis.save_images(fake_patchs.numpy(), [2, 4], os.path.join(save_dir, 'train_g_{}.png'.format(epoch+1)))
             G.save_weights(os.path.join(checkpoint_dir, 'g_{}.h5'.format(epoch+1)))
             D.save_weights(os.path.join(checkpoint_dir, 'd_{}.h5'.format(epoch+1)))
-
+            
 def evaluate():
     ###====================== PRE-LOAD DATA ===========================###
     # train_hr_img_list = sorted(tl.files.load_file_list(path=config.TRAIN.hr_img_path, regx='.*.png', printable=False))
@@ -188,7 +203,7 @@ def evaluate():
 
     out_bicu = cv2.resize(valid_lr_img[0], (size[1] * 4, size[0] * 4))
     tl.vis.save_image(out_bicu, os.path.join(save_dir, 'valid_bicubic.png'))
-
+    
 def train_continue():
     G = get_G(input_G_shape)
     D = get_D(input_D_shape)
@@ -203,7 +218,6 @@ def train_continue():
     VGG.load_weights(os.path.join(checkpoint_dir, 'VGG.h5'))
 
     lr_v = tf.Variable(lr_init)
-    g_optimizer_init=tf.optimizers.Adam(lr_v, beta_1=beta1)
     g_optimizer=tf.optimizers.Adam(lr_v, beta_1=beta1)
     d_optimizer=tf.optimizers.Adam(lr_v, beta_1=beta1)
 
@@ -240,8 +254,8 @@ def train_continue():
             grad = tape.gradient(d_loss, D.trainable_weights)
             d_optimizer.apply_gradients(zip(grad, D.trainable_weights))
             if (step == 0) or ((step+1) % verbose == 0):
-                print("Epoch: [{}/{}] step: [{}/{}] time: {:.3f}s, g_loss(mse:{:.3f}, vgg:{:.3f}, adv:{:.3f}) d_loss: {:.3f}".format(
-                        epoch+1, n_epoch, step+1, n_step_epoch, time.time() - step_time, mse_loss, vgg_loss, g_gan_loss, d_loss))
+                print("Epoch: [{}/{}] step: [{}/{}] time: {:.3f}s, g_loss(mse:{:.3f}, vgg:{:.3f}, adv:{:.3f}) d_loss: {:.3f} d_loss1: {:.3f} d_loss2: {:.3f}".format(
+                        epoch+1, n_epoch, step+1, n_step_epoch, time.time() - step_time, mse_loss, vgg_loss, g_gan_loss, d_loss, d_loss1, d_loss2))
 
         # update the learning rate
         if (epoch != 0) and ((epoch+1) % decay_every == 0):
@@ -267,6 +281,8 @@ if __name__ == '__main__':
 
     if tl.global_flag['mode'] == 'srgan':
         train()
+    elif tl.global_flag['mode'] == 'warmup':
+        warmup()
     elif tl.global_flag['mode'] == 'evaluate':
         evaluate()
     elif tl.global_flag['mode'] == 'continue':
