@@ -25,6 +25,9 @@ number_of_images = config.TRAIN.number_of_images
 input_G_shape = config.TRAIN.input_G_shape
 input_D_shape = config.TRAIN.input_D_shape
 verbose = config.TRAIN.verbose
+n_epochs_save_model = config.TRAIN.n_epochs_save_model
+g_trained_dir = config.TRAIN.g_trained_dir
+d_trained_dir = config.TRAIN.d_trained_dir
 
 ## adversarial learning (SRGAN)
 n_epoch = config.TRAIN.n_epoch
@@ -35,9 +38,9 @@ shuffle_buffer_size = config.TRAIN.shuffle_buffer_size
 # ni = int(np.sqrt(batch_size))
 
 # create folders to save result images and trained models
-save_dir = "samples"
+save_dir = config.SAVE_DIR
 tl.files.exists_or_mkdir(save_dir)
-checkpoint_dir = "models"
+checkpoint_dir = config.CHECKPOINT_DIR
 tl.files.exists_or_mkdir(checkpoint_dir)
 
 def get_train_data():    
@@ -49,12 +52,12 @@ def get_train_data():
             yield img
     
     def _map_fn_train(img):
-        hr_patch = tf.image.random_crop(img, [384,384,3])
+        hr_patch = tf.image.random_crop(img, input_D_shape)
         # chuyen phan bo ve -1 +1
         hr_patch = hr_patch/(255./2.)
         hr_patch = hr_patch - 1.
         hr_patch = tf.image.random_flip_left_right(hr_patch)
-        lr_patch = tf.image.resize(hr_patch, size=[96,96])
+        lr_patch = tf.image.resize(hr_patch, size=input_G_shape[:2])
         return lr_patch, hr_patch
 
     train_ds = tf.data.Dataset.from_generator(generator_train, output_types=(tf.float32))
@@ -99,8 +102,9 @@ def train():
                 mse_loss = tf.keras.losses.mean_squared_error(fake_hr_patchs, hr_patchs)
             grad = tape.gradient(mse_loss, G.trainable_weights)
             g_optimizer_init.apply_gradients(zip(grad,G.trainable_weights))
-            print("Epoch: [{}/{}] step: [{}/{}] time: {:.3f}s, mse: {:.3f} ".format(
-                epoch+1, n_epoch_init, step+1, n_step_epoch, time.time() - step_time, np.mean(mse_loss)))
+            if (step == 0) or ((step+1) % verbose == 0):
+                print("Epoch: [{}/{}] step: [{}/{}] time: {:.3f}s, mse: {:.3f} ".format(
+                    epoch+1, n_epoch_init, step+1, n_step_epoch, time.time() - step_time, np.mean(mse_loss)))
         if (epoch!=0) and (epoch%1==0):
             tl.vis.save_images(fake_hr_patchs.numpy(), [2, 4], os.path.join(save_dir, 'train_g_init_{}.png'.format(epoch+1)))
 
@@ -130,7 +134,7 @@ def train():
                 g_loss = mse_loss + vgg_loss + g_gan_loss
             grad = tape.gradient(g_loss, G.trainable_weights)
             g_optimizer.apply_gradients(zip(grad, G.trainable_weights))
-            grad = tape.gradient(g_loss, D.trainable_weights)
+            grad = tape.gradient(d_loss, D.trainable_weights)
             d_optimizer.apply_gradients(zip(grad, D.trainable_weights))
             if (step == 0) or ((step+1) % verbose == 0):
                 print("Epoch: [{}/{}] step: [{}/{}] time: {:.3f}s, g_loss(mse:{:.3f}, vgg:{:.3f}, adv:{:.3f}) d_loss: {:.3f}".format(
@@ -143,11 +147,11 @@ def train():
             log = " ** new learning rate: %f (for GAN)" % (lr_init * new_lr_decay)
             print(log)
 
-        if (epoch != 0) and ((epoch+1) % 1 == 0):
+        if (epoch != 0) and ((epoch+1) % n_epochs_save_model == 0):
             tl.vis.save_images(fake_patchs.numpy(), [2, 4], os.path.join(save_dir, 'train_g_{}.png'.format(epoch+1)))
-            G.save_weights(os.path.join(checkpoint_dir, 'g.h5'))
-            D.save_weights(os.path.join(checkpoint_dir, 'd.h5'))
-            
+            G.save_weights(os.path.join(checkpoint_dir, 'g_{}.h5'.format(epoch+1)))
+            D.save_weights(os.path.join(checkpoint_dir, 'd_{}.h5'.format(epoch+1)))
+
 def evaluate():
     ###====================== PRE-LOAD DATA ===========================###
     # train_hr_img_list = sorted(tl.files.load_file_list(path=config.TRAIN.hr_img_path, regx='.*.png', printable=False))
@@ -188,8 +192,8 @@ def evaluate():
 def train_continue():
     G = get_G(input_G_shape)
     D = get_D(input_D_shape)
-    G.load_weights(os.path.join(checkpoint_dir, 'g.h5'))
-    D.load_weights(os.path.join(checkpoint_dir, 'd.h5'))
+    G.load_weights(g_trained_dir)
+    D.load_weights(d_trained_dir)
 
     # Load trained model
     json_file = open(os.path.join(checkpoint_dir, 'VGG.json'), 'r')
@@ -233,7 +237,7 @@ def train_continue():
                 g_loss = mse_loss + vgg_loss + g_gan_loss
             grad = tape.gradient(g_loss, G.trainable_weights)
             g_optimizer.apply_gradients(zip(grad, G.trainable_weights))
-            grad = tape.gradient(g_loss, D.trainable_weights)
+            grad = tape.gradient(d_loss, D.trainable_weights)
             d_optimizer.apply_gradients(zip(grad, D.trainable_weights))
             if (step == 0) or ((step+1) % verbose == 0):
                 print("Epoch: [{}/{}] step: [{}/{}] time: {:.3f}s, g_loss(mse:{:.3f}, vgg:{:.3f}, adv:{:.3f}) d_loss: {:.3f}".format(
@@ -246,11 +250,11 @@ def train_continue():
             log = " ** new learning rate: %f (for GAN)" % (lr_init * new_lr_decay)
             print(log)
 
-        if (epoch != 0) and ((epoch+1) % 1 == 0):
+        if (epoch != 0) and ((epoch+1) % n_epochs_save_model == 0):
             tl.vis.save_images(fake_patchs.numpy(), [2, 4], os.path.join(save_dir, 'train_g_{}.png'.format(epoch+1)))
-            G.save_weights(os.path.join(checkpoint_dir, 'g.h5'))
-            D.save_weights(os.path.join(checkpoint_dir, 'd.h5'))
-            
+            G.save_weights(os.path.join(checkpoint_dir, 'g_{}.h5'.format(epoch+1)))
+            D.save_weights(os.path.join(checkpoint_dir, 'd_{}.h5'.format(epoch+1)))
+
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser()
