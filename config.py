@@ -19,10 +19,10 @@ config.TRAIN.input_D_shape = (384, 384, 3)
 config.TRAIN.shuffle_buffer_size = 128
 config.TRAIN.verbose = 10
 config.TRAIN.n_epochs_save_model = 2
-config.TRAIN.g_trained_dir = 'models/g.h5'
-config.TRAIN.d_trained_dir = 'models/d.h5'
-config.SAVE_DIR = 'samples'
-config.CHECKPOINT_DIR = 'models'
+config.TRAIN.g_trained_dir = '/content/drive/MyDrive/ProjectDL/srgan/models/g.h5'
+config.TRAIN.d_trained_dir = '/content/drive/MyDrive/ProjectDL/srgan/models/d.h5'
+config.SAVE_DIR = '/content/drive/MyDrive/ProjectDL/srgan/samples'
+config.CHECKPOINT_DIR = '/content/drive/MyDrive/ProjectDL/srgan/models'
 save_dir = config.SAVE_DIR
 
 ## adversarial learning (SRGAN)
@@ -31,13 +31,13 @@ config.TRAIN.lr_decay = 0.1
 config.TRAIN.decay_every = int(config.TRAIN.n_epoch / 2)
 
 ## train set location
-config.TRAIN.hr_img_path = 'DIV2K/DIV2K_train_HR/'
-config.TRAIN.lr_img_path = 'DIV2K/DIV2K_train_LR_bicubic/X4/'
+config.TRAIN.hr_img_path = '/content/drive/MyDrive/ProjectDL/srgan/DIV2K/DIV2K_train_HR/'
+config.TRAIN.lr_img_path = '/content/drive/MyDrive/ProjectDL/srgan/DIV2K/DIV2K_train_LR_bicubic/X4/'
 
 config.VALID = edict()
 ## test set location
-config.VALID.hr_img_path = 'DIV2K/DIV2K_valid_HR/'
-config.VALID.lr_img_path = 'DIV2K/DIV2K_valid_LR_bicubic/X4/'
+config.VALID.hr_img_path = '/content/drive/MyDrive/ProjectDL/srgan/DIV2K/DIV2K_valid_HR/'
+config.VALID.lr_img_path = '/content/drive/MyDrive/ProjectDL/srgan/DIV2K/DIV2K_valid_LR_bicubic/X4/'
 
 def log_config(filename, cfg):
     with open(filename, 'w') as f:
