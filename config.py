@@ -11,8 +11,8 @@ config.TRAIN.batch_size = 8
 config.TRAIN.n_epoch_init = 50
 config.TRAIN.n_epoch = 200
 config.TRAIN.number_of_images = 800
-config.TRAIN.adv_coef = 1e-3
-config.TRAIN.vgg_coef = 2e-6
+config.TRAIN.adv_coef = 1e-2
+config.TRAIN.vgg_coef = 1
 config.TRAIN.loss_type = 'MAEVGG' # Options: 'MAE', 'MSE', 'VGG', 'MAEVGG', 'MSEVGG'
 
 config.SAVE_DIR = os.path.join(config.BASE_PATH, 'samples')
