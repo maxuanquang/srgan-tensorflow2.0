@@ -309,7 +309,7 @@ def train_continue():
                     mse_loss = tf.reduce_mean(mse_loss)
                     vgg_loss = tf.multiply(tf.constant(vgg_coef),tf.keras.losses.mean_squared_error(feature_fake, feature_real))
                     vgg_loss = tf.reduce_mean(vgg_loss)
-                    g_loss = mse_loss + vgg_loss + g_gan_loss
+                    g_loss = 0.5*mse_loss + 0.5*vgg_loss + g_gan_loss
                     if (step == 0) or ((step+1) % verbose == 0):
                         print("Epoch: [{}/{}] step: [{}/{}] time: {:.3f}s, g_loss:{:.3f} (mse:{:.3f}, vgg:{:.3f}, adv:{:.3f}) d_loss:{:.3f} (d_loss1:{:.3f} d_loss2:{:.3f})".format(
                                 epoch+1, n_epoch, step+1, n_step_epoch, time.time() - step_time, g_loss, mse_loss, vgg_loss, g_gan_loss, d_loss, d_loss1, d_loss2))
