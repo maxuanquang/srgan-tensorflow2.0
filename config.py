@@ -6,8 +6,7 @@ config = edict()
 config.TRAIN = edict()
 
 ####### Tham số mô hình ############
-# config.BASE_PATH = '/content/drive/MyDrive/ProjectDL/srgan'
-config.BASE_PATH = ''
+config.BASE_PATH = '/content/drive/MyDrive/ProjectDL/srgan'
 config.TRAIN.batch_size = 8
 config.TRAIN.n_epoch_init = 50
 config.TRAIN.n_epoch = 60
