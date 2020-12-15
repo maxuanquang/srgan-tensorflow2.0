@@ -2,7 +2,7 @@
 SRGAN implementation using Tensorflow 2.0
 
 
-Tải các folder còn lại (samples, models, DIV2K, archive, results) tại:
+Tải các folder còn lại (samples, models, DIV2K, archive) tại:
 
 https://drive.google.com/drive/folders/1-C3y8Ae_4NbFjrymxfF2BExlhtCzfs-2?usp=sharing
 
