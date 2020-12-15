@@ -2,32 +2,31 @@
 SRGAN implementation using Tensorflow 2.0
 
 
-Tải các folder còn lại (samples, models, DIV2K, archive) tại:
+Download other folders (samples, models, DIV2K, archive) at:
 
 https://drive.google.com/drive/folders/1-C3y8Ae_4NbFjrymxfF2BExlhtCzfs-2?usp=sharing
 
-## Cách sử dụng:
+## Usage:
 
-1. Sửa các thông số trong `config.py`
-2. Cách chạy file `train.py`
+1. Change model's parameters in `config.py`
+2. How to use `train.py`
 
 - Warm-up Generator:
 ```
 python train.py --mode=warmup
 ```
-- Bắt đầu train từ đầu
+- Train from beginning:
 ```
 python train.py
 ```
--  Train tiếp:
+-  Continue training:
 ```
 python train.py --mode=continue 
 ```
-- Gen ảnh làm nét:
+- Generate demo super-resolution image:
 ```python
 python train.py --mode=evaluate 
 ```
 
-3. Losses và các điểm PSNR, SSIM được tính toán trong file `evaluation.ipynb`
-4. Triển khai trên web trong thư mục `deployment`
-
+3. Losses and PSNR, SSIM scores can be calculated in `evaluation.ipynb`
+4. Web deploymnet in `deployment`
