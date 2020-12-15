@@ -5,15 +5,14 @@ SRGAN re-implement using Tensorflow 2.0
 ![anh](img/img.png)
 
 
-Tải các folder còn lại (samples, models, DIV2K, archive) tại:
+Tải các folder còn lại (samples, models, DIV2K, archive, results) tại:
 
 https://drive.google.com/drive/folders/1-C3y8Ae_4NbFjrymxfF2BExlhtCzfs-2?usp=sharing
 
 ## Cách sử dụng:
 
-1. Notebook mẫu `srgan.ipynb` trong đường link drive
-2. Sửa các thông số trong `config.py`
-3. Cách chạy file `train.py`
+1. Sửa các thông số trong `config.py`
+2. Cách chạy file `train.py`
 
 - Warm-up Generator:
 ```
@@ -32,3 +31,4 @@ python train.py --mode=continue
 python train.py --mode=evaluate 
 ```
 
+3. Losses và các điểm PSNR, SSIM được tính toán trong file 'evaluation.ipynb'
