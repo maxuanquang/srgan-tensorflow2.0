@@ -1,8 +1,5 @@
 # srgan-tensorflow2.0
-SRGAN re-implement using Tensorflow 2.0
-
-## Cấu trúc thư mục
-![anh](img/img.png)
+SRGAN implementation using Tensorflow 2.0
 
 
 Tải các folder còn lại (samples, models, DIV2K, archive, results) tại:
@@ -31,4 +28,6 @@ python train.py --mode=continue
 python train.py --mode=evaluate 
 ```
 
-3. Losses và các điểm PSNR, SSIM được tính toán trong file 'evaluation.ipynb'
+3. Losses và các điểm PSNR, SSIM được tính toán trong file `evaluation.ipynb`
+4. Triển khai trên web trong thư mục `deployment`
+
