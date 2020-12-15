@@ -29,4 +29,4 @@ python train.py --mode=evaluate
 ```
 
 3. Losses and PSNR, SSIM scores can be calculated in `evaluation.ipynb`
-4. Web deploymnet in `deployment`
+4. Web deployment in `deployment`
